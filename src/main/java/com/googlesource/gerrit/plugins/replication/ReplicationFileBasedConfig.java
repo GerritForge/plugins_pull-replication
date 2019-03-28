@@ -56,7 +56,7 @@ public class ReplicationFileBasedConfig implements ReplicationConfig {
       SitePaths site, DestinationFactory destinationFactory, @PluginData Path pluginDataDir)
       throws ConfigInvalidException, IOException {
     this.site = site;
-    this.cfgPath = site.etc_dir.resolve("replication.config");
+    this.cfgPath = site.etc_dir.resolve("pull-replication.config");
     this.config = new FileBasedConfig(cfgPath.toFile(), FS.DETECTED);
     this.destinations = allDestinations(destinationFactory);
     this.pluginDataDir = pluginDataDir;

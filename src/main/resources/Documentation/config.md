@@ -1,4 +1,4 @@
-Replication Configuration
+@PLUGIN@ Configuration
 =========================
 
 Enabling Replication
@@ -25,8 +25,8 @@ file, for example to replicate in parallel to four different hosts:</a>
     url = mirror1.us.some.org:/pub/git/${name}.git
     url = mirror2.us.some.org:/pub/git/${name}.git
     url = mirror3.us.some.org:/pub/git/${name}.git
-    push = +refs/heads/*:refs/heads/*
-    push = +refs/tags/*:refs/tags/*
+    fetch = +refs/heads/*:refs/heads/*
+    fetch = +refs/tags/*:refs/tags/*
     threads = 3
     authGroup = Public Mirror Group
     authGroup = Second Public Mirror Group
@@ -35,24 +35,24 @@ file, for example to replicate in parallel to four different hosts:</a>
 Then reload the replication plugin to pick up the new configuration:
 
 ```
-  ssh -p 29418 localhost gerrit plugin reload replication
+  ssh -p 29418 localhost gerrit plugin reload @PLUGIN@
 ```
 
 To manually trigger replication at runtime, see
 SSH command [start](cmd-start.md).
 
-File `replication.config`
+File `@PLUGIN@.config`
 -------------------------
 
-The optional file `$site_path/etc/replication.config` is a Git-style
+The optional file `$site_path/etc/@PLUGIN@.config` is a Git-style
 config file that controls the replication settings for the replication
 plugin.
 
 The file is composed of one or more `remote` sections, each remote
 section provides common configuration settings for one or more
-destination URLs.
+source URLs.
 
-Each remote section uses its own thread pool.  If pushing to
+Each remote section uses its own thread pool.  If fetching from
 multiple remotes, over differing types of network connections
 (e.g. LAN and also public Internet), its a good idea to put them
 into different remote sections, so that replication to the slower
@@ -73,10 +73,6 @@ gerrit.autoReload
 	the replication plugin. When the reload takes place, pending replication
 	events based on old settings are discarded. By default, false.
 
-gerrit.defaultForceUpdate
-:	If true, the default push refspec will be set to use forced
-	update to the remote when no refspec is given.  By default, false.
-
 replication.lockErrorMaxRetries
 :	Number of times to retry a replication operation if a lock
 	error is detected.
@@ -84,8 +80,8 @@ replication.lockErrorMaxRetries
 	If two or more replication operations (to the same GIT and Ref)
 	are scheduled at approximately the same time (and end up on different
 	replication threads), there is a large probability that the last
-	push to complete will fail with a remote "failure to lock" error.
-	This option allows Gerrit to retry the replication push when the
+	fetch to complete will fail with a remote "failure to lock" error.
+	This option allows Gerrit to retry the replication fetch when the
 	"failure to lock" error is detected.
 
 	A good value would be 3 retries or less, depending on how often
@@ -105,16 +101,16 @@ replication.lockErrorMaxRetries
 	Default: 0 (disabled, i.e. never retry)
 
 replication.maxRetries
-:	Maximum number of times to retry a push operation that previously
+:	Maximum number of times to retry a fetch operation that previously
 	failed.
 
-	When a push operation reaches its maximum number of retries,
+	When a fetch operation reaches its maximum number of retries,
 	the replication event is discarded from the queue and the remote
 	destinations may remain out of sync.
 
 	Can be overridden at remote-level by setting replicationMaxRetries.
 
-	By default, pushes are retried indefinitely.
+	By default, fetchs are retried indefinitely.
 
 replication.eventsDirectory
 : Directory where replication events are persisted
@@ -128,10 +124,10 @@ replication.eventsDirectory
 	When not set, defaults to the plugin's data directory.
 
 remote.NAME.url
-:	Address of the remote server to push to.  Multiple URLs may be
+:	Address of the remote server to fetch from.  Multiple URLs may be
 	specified within a single remote block, listing different
 	destinations which share the same settings.  Assuming
-	sufficient threads in the thread pool, Gerrit pushes to all
+	sufficient threads in the thread pool, Gerrit fetchs from all
 	URLs in parallel, using one thread per URL.
 
 	Within each URL value the magic placeholder `${name}` is
@@ -143,44 +139,10 @@ remote.NAME.url
 	(i.e.: Exactly one [remote.NAME.projects][3] and that name's
 	value is a single project match.).
 
-	See [git push][1] for details on Git URL syntax.
+	See [git fetch][1] for details on Git URL syntax.
 
-[1]: http://www.git-scm.com/docs/git-push#URLS
+[1]: http://www.git-scm.com/docs/git-fetch#URLS
 [3]: #remote.NAME.projects
-
-remote.NAME.adminUrl
-:	Address of the alternative remote server only for repository
-	creation.  Multiple URLs may be specified within a single
-	remote block, listing different destinations which share the
-	same settings.
-
-	The adminUrl can be used as an ssh alternative to the url
-	option, but only related to repository creation.  If not
-	specified, the repository creation tries to follow the default
-	way through the url value specified.
-
-	It is useful when the remote.NAME.url protocols do not allow
-	repository creation although their usage is mandatory in the
-	local environment.  In that case, an alternative SSH url could
-	be specified to repository creation.
-
-	To enable replication to different Gerrit instance use `gerrit+ssh://`
-	as protocol name followed by hostname of another Gerrit server eg.
-
-	`gerrit+ssh://replica1.my.org/`
-
-	In this case replication will use Gerrit's SSH API to
-	create/remove projects and update repository HEAD references.
-
-	NOTE: In order to replicate project deletion, the
-	link:https://gerrit-review.googlesource.com/admin/projects/plugins/delete-project delete-project[delete-project]
-	plugin must be installed on the other Gerrit.
-
-remote.NAME.receivepack
-:	Path of the `git-receive-pack` executable on the remote
-	system, if using the SSH transport.
-
-	Defaults to `git-receive-pack`.
 
 remote.NAME.uploadpack
 :	Path of the `git-upload-pack` executable on the remote system,
@@ -188,20 +150,18 @@ remote.NAME.uploadpack
 
 	Defaults to `git-upload-pack`.
 
-remote.NAME.push
+remote.NAME.fetch
 :	Standard Git refspec denoting what should be replicated.
 	Setting this to `+refs/heads/*:refs/heads/*` would mirror only
 	the active branches, but not the change refs under
 	`refs/changes/`, or the tags under `refs/tags/`.
 
-	Note that prefixing a source refspec with `+` causes the replication
-	to be done with a `git push --force` command.
-	Be aware that when you are pushing to remote repositories that may
+	Be aware that when you are fetching to remote repositories that may
 	have read/write access (e.g. GitHub) you may want to omit the `+`
 	to prevent the risk of overwriting branches that have been modified
 	on the remote.
 
-	Multiple push keys can be supplied, to specify multiple
+	Multiple fetch keys can be supplied, to specify multiple
 	patterns to match against.  In the [example above][2], remote
 	"pubmirror" uses two push keys to match both `refs/heads/*`
 	and `refs/tags/*`, but excludes all others, including
@@ -230,17 +190,8 @@ remote.NAME.timeout
 
 	Defaults to 0 seconds, wait indefinitely.
 
-remote.NAME.replicationDelay
-:	Time to wait before scheduling a remote push operation. Setting
-	the delay to 0 effectively disables the delay, causing the push
-	to start as soon as possible.
-
-	This is a Gerrit specific extension to the Git remote block.
-
-	By default, 15 seconds.
-
 remote.NAME.rescheduleDelay
-:	Delay when rescheduling a push operation due to an in-flight push
+:	Delay when rescheduling a fetch operation due to an in-flight push
 	running for the same project.
 
 	Cannot be set to a value lower than 3 seconds to avoid a tight loop
@@ -251,12 +202,12 @@ remote.NAME.rescheduleDelay
 	By default, 3 seconds.
 
 remote.NAME.replicationRetry
-:	Time to wait before scheduling a remote push operation previously
-	failed due to an offline remote server.
+:	Time to wait before scheduling a remote fetch operation previously
+	failed due to a remote server error.
 
-	If a remote push operation fails because a remote server was
-	offline, all push operations to the same destination URL are
-	blocked, and the remote push is continuously retried unless
+	If a remote fetch operation fails because a remote server was
+	offline, all fetch operations to the same destination URL are
+	blocked, and the remote fetch is continuously retried unless
 	the replicationMaxRetries value is set.
 
 	This is a Gerrit specific extension to the Git remote block.
@@ -264,10 +215,10 @@ remote.NAME.replicationRetry
 	By default, 1 minute.
 
 remote.NAME.replicationMaxRetries
-:	Maximum number of times to retry a push operation that previously
+:	Maximum number of times to retry a fetch operation that previously
 	failed.
 
-	When a push operation reaches its maximum number of retries
+	When a fetch operation reaches its maximum number of retries
 	the replication event is discarded from the queue and the remote
 	destinations could be out of sync.
 
@@ -276,12 +227,12 @@ remote.NAME.replicationMaxRetries
 	By default, use replication.maxRetries.
 
 remote.NAME.threads
-:	Number of worker threads to dedicate to pushing to the
-	repositories described by this remote.  Each thread can push
-	one project at a time, to one destination URL.  Scheduling
+:	Number of worker threads to dedicate to fetching to the
+	repositories described by this remote.  Each thread can fetch
+	one project at a time, from one source URL.  Scheduling
 	within the thread pool is done on a per-project basis.  If a
 	remote block describes 4 URLs, allocating 4 threads in the
-	pool will permit some level of parallel pushing.
+	pool will permit some level of parallel fetching.
 
 	By default, 1 thread.
 
@@ -295,36 +246,6 @@ remote.NAME.authGroup
 
 	By default, replicates without group control, i.e. replicates
 	everything to all remotes.
-
-remote.NAME.createMissingRepositories
-:	If true, a repository is automatically created on the remote site.
-	If the remote site was not available at the moment when a new
-	project was created, it will be created if during the replication
-	of a ref it is found to be missing.
-	
-	If false, repositories are never created automatically on this
-	remote.
-
-	By default, true, missing repositories are created.
-
-remote.NAME.replicatePermissions
-:	If true, permissions-only projects and the refs/meta/config
-	branch will also be replicated to the remote site.  These
-	projects and branches may be needed to keep a backup or slave
-	server current.
-
-	By default, true, replicating everything.
-
-remote.NAME.replicateProjectDeletions
-:	If true, project deletions will also be replicated to the
-	remote site.
-
-	By default, false, do *not* replicate project deletions.
-
-remote.NAME.replicateHiddenProjects
-:	If true, hidden projects will be replicated to the remote site.
-
-	By default, false, do *not* replicate hidden projects.
 
 remote.NAME.mirror
 :	If true, replication will remove remote branches that are absent
@@ -355,7 +276,7 @@ remote.NAME.remoteNameStyle
 	they do in Gerrit.
 
 <a name="remote.NAME.projects">remote.NAME.projects</a>
-:	Specifies which repositories should be replicated to the
+:	Specifies which repositories should be replicated from the
 	remote. It can be provided more than once, and supports three
 	formats: regular expressions, wildcard matching, and single
 	project matching. All three formats match case-sensitive.
