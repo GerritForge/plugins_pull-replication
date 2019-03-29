@@ -14,8 +14,8 @@ with the command line:
 ```
 
 <a name="example_file">
-Next, create `$site_path/etc/replication.config` as a Git-style config
-file, for example to replicate in parallel to four different hosts:</a>
+Next, create `$site_path/etc/@PLUGIN@.config` as a Git-style config
+file, for example to replicate in parallel from four different hosts:</a>
 
 ```
   [remote "host-one"]
@@ -64,11 +64,11 @@ must be unique to distinguish the different sections if more than one
 remote section appears in the file.
 
 gerrit.replicateOnStartup
-:	If true, replicates to all remotes on startup to ensure they
+:	If true, replicates from all remotes on startup to ensure they
 	are in-sync with this server.  By default, false.
 
 gerrit.autoReload
-:	If true, automatically reloads replication destinations and settings
+:	If true, automatically reloads replication sources and settings
 	after `replication.config` file is updated, without the need to restart
 	the replication plugin. When the reload takes place, pending replication
 	events based on old settings are discarded. By default, false.
@@ -105,23 +105,11 @@ replication.maxRetries
 	failed.
 
 	When a fetch operation reaches its maximum number of retries,
-	the replication event is discarded from the queue and the remote
-	destinations may remain out of sync.
+	the replication event is discarded from the queue.
 
 	Can be overridden at remote-level by setting replicationMaxRetries.
 
 	By default, fetchs are retried indefinitely.
-
-replication.eventsDirectory
-: Directory where replication events are persisted
-
-	When scheduling a replication, the replication event is persisted
-	under this directory. When the replication is done, the event is deleted.
-	If plugin is stopped before all scheduled replications are done, the
-	persisted events will not be deleted. When the plugin is started again,
-	it will trigger all replications found under this directory.
-
-	When not set, defaults to the plugin's data directory.
 
 remote.NAME.url
 :	Address of the remote server to fetch from.  Multiple URLs may be
@@ -129,6 +117,8 @@ remote.NAME.url
 	destinations which share the same settings.  Assuming
 	sufficient threads in the thread pool, Gerrit fetchs from all
 	URLs in parallel, using one thread per URL.
+
+    TODO: This doesn't apply here: you can only replicate from one url
 
 	Within each URL value the magic placeholder `${name}` is
 	replaced with the Gerrit project name.  This is a Gerrit
@@ -156,20 +146,11 @@ remote.NAME.fetch
 	the active branches, but not the change refs under
 	`refs/changes/`, or the tags under `refs/tags/`.
 
-	Be aware that when you are fetching to remote repositories that may
-	have read/write access (e.g. GitHub) you may want to omit the `+`
-	to prevent the risk of overwriting branches that have been modified
-	on the remote.
-
 	Multiple fetch keys can be supplied, to specify multiple
 	patterns to match against.  In the [example above][2], remote
-	"pubmirror" uses two push keys to match both `refs/heads/*`
+	"pubmirror" uses two fetch keys to match both `refs/heads/*`
 	and `refs/tags/*`, but excludes all others, including
 	`refs/changes/*`.
-
-	Defaults to `refs/*:refs/*` (push all refs) if not specified,
-	or `+refs/*:refs/*` (force push all refs) if not specified and
-	`gerrit.defaultForceUpdate` is true.
 
 	Note that the `refs/meta/config` branch is only replicated
 	when `replicatePermissions` is true, even if the push refspec
@@ -184,14 +165,14 @@ remote.NAME.timeout
 	waits indefinitely.
 
 	A timeout should be large enough to mostly transfer the
-	objects to the other side.  1 second may be too small for
+	objects from the other side.  1 second may be too small for
 	larger projects, especially over a WAN link, while 10-30
 	seconds is a much more reasonable timeout value.
 
 	Defaults to 0 seconds, wait indefinitely.
 
 remote.NAME.rescheduleDelay
-:	Delay when rescheduling a fetch operation due to an in-flight push
+:	Delay when rescheduling a fetch operation due to an in-flight fetch
 	running for the same project.
 
 	Cannot be set to a value lower than 3 seconds to avoid a tight loop
@@ -206,7 +187,7 @@ remote.NAME.replicationRetry
 	failed due to a remote server error.
 
 	If a remote fetch operation fails because a remote server was
-	offline, all fetch operations to the same destination URL are
+	offline, all fetch operations from the same source URL are
 	blocked, and the remote fetch is continuously retried unless
 	the replicationMaxRetries value is set.
 
@@ -219,8 +200,7 @@ remote.NAME.replicationMaxRetries
 	failed.
 
 	When a fetch operation reaches its maximum number of retries
-	the replication event is discarded from the queue and the remote
-	destinations could be out of sync.
+	the replication event is discarded from the queue.
 
 	This is a Gerrit specific extension to the Git remote block.
 
@@ -245,17 +225,10 @@ remote.NAME.authGroup
 	be replicated or not to the remote.
 
 	By default, replicates without group control, i.e. replicates
-	everything to all remotes.
-
-remote.NAME.mirror
-:	If true, replication will remove remote branches that are absent
-	locally or invisible to the replication (for example read
-	access denied via `authGroup` option).
-
-	By default, false, do not remove remote branches.
+	everything from all remotes.
 
 remote.NAME.remoteNameStyle
-:	Provides possibilities to influence the name of the target
+:	Provides possibilities to influence the name of the source
 	repository, e.g. by replacing slashes in the `${name}`
 	placeholder.
 
@@ -302,7 +275,7 @@ remote.NAME.remoteNameStyle
 	the project `foo/bar`, but no other project.
 
 	By default, replicates without matching, i.e. replicates
-	everything to all remotes.
+	everything from all remotes.
 
 File `secure.config`
 --------------------

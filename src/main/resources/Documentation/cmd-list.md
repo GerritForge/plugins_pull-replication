@@ -16,7 +16,7 @@ ssh -p @SSH_PORT@ @SSH_HOST@ @PLUGIN@ list
 
 DESCRIPTION
 -----------
-Lists the name and URL for remote destinations.
+Lists the name and URL for remote sources.
 
 ACCESS
 ------
@@ -30,7 +30,7 @@ OPTIONS
 -------
 
 `--remote <PATTERN>`
-:	Only print information for destinations whose remote name matches
+:	Only print information for sources whose remote name matches
 	the `PATTERN`.
 
 `--detail`
@@ -42,25 +42,25 @@ OPTIONS
 
 EXAMPLES
 --------
-List all destinations:
+List all sources:
 
 ```
   $ ssh -p @SSH_PORT@ @SSH_HOST@ @PLUGIN@ list
 ```
 
-List all destinations detail information:
+List all sources detail information:
 
 ```
   $ ssh -p @SSH_PORT@ @SSH_HOST@ @PLUGIN@ list --detail
 ```
 
-List all destinations detail information in json format:
+List all sources detail information in json format:
 
 ```
   $ ssh -p @SSH_PORT@ @SSH_HOST@ @PLUGIN@ list --detail --json
 ```
 
-List destinations whose name contains mirror:
+List sources whose name contains mirror:
 
 ```
   $ ssh -p @SSH_PORT@ @SSH_HOST@ @PLUGIN@ list --remote mirror

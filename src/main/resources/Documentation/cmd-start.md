@@ -18,7 +18,7 @@ ssh -p @SSH_PORT@ @SSH_HOST@ @PLUGIN@ start
 DESCRIPTION
 -----------
 Schedules pull replication of the specified projects to all configured
-replication destinations, or only those whose URLs match the pattern
+replication sources, or only those whose URLs match the pattern
 given on the command line.
 
 If you get message "Nothing to replicate" while running this command,
@@ -62,14 +62,14 @@ OPTIONS
 :	Schedule replication for all projects.
 
 `--url <PATTERN>`
-:	Replicate only to replication destinations whose URL contains
+:	Replicate only from replication sources whose URL contains
 	the substring `PATTERN`.  This can be useful to replicate
-	only to a previously down node, which has been brought back
+	only from a previously down node, which has been brought back
 	online.
 
 EXAMPLES
 --------
-Replicate every project, to every configured remote:
+Replicate every project, from every configured remote:
 
 ```
   $ ssh -p @SSH_PORT@ @SSH_HOST@ @PLUGIN@ start --all
