@@ -16,8 +16,6 @@ package com.googlesource.gerrit.plugins.replication.pull;
 
 import static com.googlesource.gerrit.plugins.replication.pull.StartFetchReplicationCapability.START_REPLICATION;
 
-import org.eclipse.jgit.transport.SshSessionFactory;
-
 import com.google.gerrit.extensions.annotations.Exports;
 import com.google.gerrit.extensions.config.CapabilityDefinition;
 import com.google.gerrit.extensions.events.LifecycleListener;
@@ -26,10 +24,9 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.internal.UniqueAnnotations;
-import com.googlesource.gerrit.plugins.replication.AdminApiFactory;
+import com.googlesource.gerrit.plugins.replication.AutoReloadSecureCredentialsFactoryDecorator;
 import com.googlesource.gerrit.plugins.replication.CredentialsFactory;
 import com.googlesource.gerrit.plugins.replication.RemoteSiteUser;
-import com.googlesource.gerrit.plugins.replication.ReplicationSshSessionFactoryProvider;
 
 class PullReplicationModule extends AbstractModule {
   @Override
@@ -62,8 +59,5 @@ class PullReplicationModule extends AbstractModule {
     EventTypes.register(FetchRefReplicatedEvent.TYPE, FetchRefReplicatedEvent.class);
     EventTypes.register(FetchRefReplicationDoneEvent.TYPE, FetchRefReplicationDoneEvent.class);
     EventTypes.register(FetchReplicationScheduledEvent.TYPE, FetchReplicationScheduledEvent.class);
-    bind(SshSessionFactory.class).toProvider(ReplicationSshSessionFactoryProvider.class);
-
-    bind(AdminApiFactory.class);
   }
 }
