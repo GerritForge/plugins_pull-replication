@@ -26,12 +26,10 @@ import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.internal.UniqueAnnotations;
 import com.googlesource.gerrit.plugins.replication.AutoReloadSecureCredentialsFactoryDecorator;
 import com.googlesource.gerrit.plugins.replication.CredentialsFactory;
-import com.googlesource.gerrit.plugins.replication.RemoteSiteUser;
 
 class PullReplicationModule extends AbstractModule {
   @Override
   protected void configure() {
-    bind(SourceFactory.class).in(Scopes.SINGLETON);
     bind(PullReplicationQueue.class).in(Scopes.SINGLETON);
     bind(LifecycleListener.class)
         .annotatedWith(UniqueAnnotations.create())
@@ -50,7 +48,6 @@ class PullReplicationModule extends AbstractModule {
         .to(StartFetchReplicationCapability.class);
 
     install(new FactoryModuleBuilder().build(FetchAll.Factory.class));
-    install(new FactoryModuleBuilder().build(RemoteSiteUser.Factory.class));
     install(new FactoryModuleBuilder().build(ReplicationState.Factory.class));
 
     bind(ReplicationConfig.class).to(AutoReloadConfigDecorator.class);

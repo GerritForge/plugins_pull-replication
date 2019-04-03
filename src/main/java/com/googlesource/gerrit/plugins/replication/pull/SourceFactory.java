@@ -27,12 +27,10 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
-import com.googlesource.gerrit.plugins.replication.RemoteSiteUser;
 
 @Singleton
 public class SourceFactory {
   private final Injector injector;
-  private final RemoteSiteUser.Factory replicationUserFactory;
   private final PluginUser pluginUser;
   private final GitRepositoryManager gitRepositoryManager;
   private final PermissionBackend permissionBackend;
@@ -46,7 +44,6 @@ public class SourceFactory {
   @Inject
   public SourceFactory(
       Injector injector,
-      RemoteSiteUser.Factory replicationUserFactory,
       PluginUser pluginUser,
       GitRepositoryManager gitRepositoryManager,
       PermissionBackend permissionBackend,
@@ -57,7 +54,6 @@ public class SourceFactory {
       GroupIncludeCache groupIncludeCache,
       DynamicItem<EventDispatcher> eventDispatcher) {
     this.injector = injector;
-    this.replicationUserFactory = replicationUserFactory;
     this.pluginUser = pluginUser;
     this.gitRepositoryManager = gitRepositoryManager;
     this.permissionBackend = permissionBackend;
@@ -73,7 +69,6 @@ public class SourceFactory {
     return new Source(
         injector,
         config,
-        replicationUserFactory,
         pluginUser,
         gitRepositoryManager,
         permissionBackend,
