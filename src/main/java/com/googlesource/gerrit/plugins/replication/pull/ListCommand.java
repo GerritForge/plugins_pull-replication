@@ -23,8 +23,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.inject.Inject;
-import com.googlesource.gerrit.plugins.replication.pull.ReplicationConfig.FilterType;
-
+import com.googlesource.gerrit.plugins.replication.ReplicationConfig.FilterType;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import org.kohsuke.args4j.Option;
@@ -41,11 +41,11 @@ final class ListCommand extends SshCommand {
   @Option(name = "--json", usage = "output in json format")
   private boolean json;
 
-  @Inject private ReplicationConfig config;
+  @Inject private SourcesCollection sourcesCollection;
 
   @Override
-  protected void run() {
-    for (Source s : config.getSources(FilterType.ALL)) {
+  protected void run() throws IOException {
+    for (Source s : sourcesCollection.getAll(FilterType.ALL)) {
       if (matches(s.getRemoteConfigName())) {
         printRemote(s);
       }
