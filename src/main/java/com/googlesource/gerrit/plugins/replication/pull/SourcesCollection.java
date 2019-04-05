@@ -40,11 +40,11 @@ public class SourcesCollection {
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
   private final ReplicationConfig replicationConfig;
-  private final SourceFactory sourceFactory;
+  private final Source.Factory sourceFactory;
   private List<Source> sources;
 
   @Inject
-  public SourcesCollection(ReplicationConfig replicationConfig, SourceFactory sourceFactory) {
+  public SourcesCollection(ReplicationConfig replicationConfig, Source.Factory sourceFactory) {
     this.replicationConfig = replicationConfig;
     this.sourceFactory = sourceFactory;
   }

@@ -33,6 +33,7 @@ class PullReplicationModule extends AbstractModule {
   @Override
   protected void configure() {
     bind(SourcesCollection.class).in(Scopes.SINGLETON);
+    install(new FactoryModuleBuilder().build(Source.Factory.class));
     bind(PullReplicationQueue.class).in(Scopes.SINGLETON);
     bind(LifecycleListener.class)
         .annotatedWith(UniqueAnnotations.create())
