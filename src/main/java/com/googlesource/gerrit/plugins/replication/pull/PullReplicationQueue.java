@@ -19,7 +19,6 @@ import com.google.gerrit.reviewdb.client.Project;
 import com.google.gerrit.server.git.WorkQueue;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.googlesource.gerrit.plugins.replication.ReplicationConfig.FilterType;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.transport.URIish;
 import org.slf4j.Logger;
@@ -88,7 +87,7 @@ public class PullReplicationQueue implements LifecycleListener {
       return;
     }
 
-    for (Source cfg : sourcesCollection.getAll(FilterType.ALL)) {
+    for (Source cfg : sourcesCollection.getAll()) {
       if (cfg.wouldFetchProject(project)) {
         for (URIish uri : cfg.getURIs(project, urlMatch)) {
           cfg.schedule(project, FetchOne.ALL_REFS, uri, state, now);

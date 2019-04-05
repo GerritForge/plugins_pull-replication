@@ -26,7 +26,6 @@ import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.internal.UniqueAnnotations;
 import com.googlesource.gerrit.plugins.replication.AutoReloadSecureCredentialsFactoryDecorator;
 import com.googlesource.gerrit.plugins.replication.CredentialsFactory;
-import com.googlesource.gerrit.plugins.replication.ReplicationConfig;
 import com.googlesource.gerrit.plugins.replication.StartReplicationCapability;
 
 class PullReplicationModule extends AbstractModule {
@@ -55,7 +54,7 @@ class PullReplicationModule extends AbstractModule {
     install(new FactoryModuleBuilder().build(FetchAll.Factory.class));
     install(new FactoryModuleBuilder().build(ReplicationState.Factory.class));
 
-    bind(ReplicationConfig.class).to(AutoReloadConfigDecorator.class);
+    bind(PullReplicationConfig.class).to(AutoReloadConfigDecorator.class);
     bind(ReplicationStateListener.class).to(ReplicationStateLogger.class);
 
     EventTypes.register(FetchRefReplicatedEvent.TYPE, FetchRefReplicatedEvent.class);

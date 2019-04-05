@@ -23,7 +23,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.inject.Inject;
-import com.googlesource.gerrit.plugins.replication.ReplicationConfig.FilterType;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
@@ -45,7 +44,7 @@ final class ListCommand extends SshCommand {
 
   @Override
   protected void run() throws IOException {
-    for (Source s : sourcesCollection.getAll(FilterType.ALL)) {
+    for (Source s : sourcesCollection.getAll()) {
       if (matches(s.getRemoteConfigName())) {
         printRemote(s);
       }

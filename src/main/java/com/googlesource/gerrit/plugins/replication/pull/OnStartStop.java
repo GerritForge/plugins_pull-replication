@@ -20,7 +20,6 @@ import com.google.gerrit.extensions.registration.DynamicItem;
 import com.google.gerrit.extensions.systemstatus.ServerInformation;
 import com.google.gerrit.server.events.EventDispatcher;
 import com.google.inject.Inject;
-import com.googlesource.gerrit.plugins.replication.ReplicationConfig;
 import com.googlesource.gerrit.plugins.replication.ReplicationFilter;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -30,7 +29,7 @@ public class OnStartStop implements LifecycleListener {
   private final AtomicReference<Future<?>> fetchAllFuture;
   private final ServerInformation srvInfo;
   private final FetchAll.Factory fetchAll;
-  private final ReplicationConfig config;
+  private final PullReplicationConfig config;
   private final DynamicItem<EventDispatcher> eventDispatcher;
   private final ReplicationState.Factory replicationStateFactory;
 
@@ -38,7 +37,7 @@ public class OnStartStop implements LifecycleListener {
   protected OnStartStop(
       ServerInformation srvInfo,
       FetchAll.Factory fetchAll,
-      ReplicationConfig config,
+      PullReplicationConfig config,
       DynamicItem<EventDispatcher> eventDispatcher,
       ReplicationState.Factory replicationStateFactory) {
     this.srvInfo = srvInfo;

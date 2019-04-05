@@ -22,13 +22,10 @@ import com.google.common.flogger.FluentLogger;
 import com.google.gerrit.server.git.WorkQueue;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.googlesource.gerrit.plugins.replication.ReplicationConfig;
-import com.googlesource.gerrit.plugins.replication.ReplicationConfig.FilterType;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Predicate;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.transport.RefSpec;
@@ -39,12 +36,12 @@ import org.eclipse.jgit.transport.URIish;
 public class SourcesCollection {
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
-  private final ReplicationConfig replicationConfig;
+  private final PullReplicationConfig replicationConfig;
   private final Source.Factory sourceFactory;
   private List<Source> sources;
 
   @Inject
-  public SourcesCollection(ReplicationConfig replicationConfig, Source.Factory sourceFactory) {
+  public SourcesCollection(PullReplicationConfig replicationConfig, Source.Factory sourceFactory) {
     this.replicationConfig = replicationConfig;
     this.sourceFactory = sourceFactory;
   }
@@ -53,7 +50,7 @@ public class SourcesCollection {
     this.sources = allSources();
   }
 
-  public List<Source> getAll(FilterType filterType) {
+  public List<Source> getAll() {
     if (replicationConfig.reloadIfNeeded()) {
       try {
         load();
@@ -62,24 +59,7 @@ public class SourcesCollection {
       }
     }
 
-    Predicate<? super Source> filter;
-    switch (filterType) {
-      case PROJECT_CREATION:
-        filter = source -> source.isCreateMissingRepos();
-        break;
-      case PROJECT_DELETION:
-        filter = source -> source.isReplicateProjectDeletions();
-        break;
-      case ALL:
-      default:
-        filter = source -> true;
-        break;
-    }
-    return sources.stream().filter(Objects::nonNull).filter(filter).collect(toList());
-  }
-
-  public boolean isEmpty() {
-    return sources.isEmpty();
+    return sources.stream().filter(Objects::nonNull).collect(toList());
   }
 
   List<Source> allSources() throws ConfigInvalidException {

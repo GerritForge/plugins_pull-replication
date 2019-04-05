@@ -13,13 +13,10 @@
 // limitations under the License.
 package com.googlesource.gerrit.plugins.replication.pull;
 
-import com.google.common.base.Strings;
 import com.google.common.flogger.FluentLogger;
-import com.google.gerrit.extensions.annotations.PluginData;
 import com.google.gerrit.server.config.SitePaths;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.googlesource.gerrit.plugins.replication.ReplicationConfig;
 import java.io.IOException;
 import java.nio.file.Path;
 import org.eclipse.jgit.errors.ConfigInvalidException;
@@ -28,23 +25,18 @@ import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.util.FS;
 
 @Singleton
-public class ReplicationFileBasedConfig implements ReplicationConfig {
+public class PullReplicationFileBasedConfig implements PullReplicationConfig {
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
-  private final SitePaths site;
   private Path cfgPath;
   private boolean replicateAllOnPluginStart;
   private boolean defaultForceUpdate;
   private final FileBasedConfig config;
-  private final Path pluginDataDir;
 
   @Inject
-  public ReplicationFileBasedConfig(SitePaths site, @PluginData Path pluginDataDir)
-      throws ConfigInvalidException, IOException {
-    this.site = site;
+  public PullReplicationFileBasedConfig(SitePaths site) throws ConfigInvalidException, IOException {
     this.cfgPath = site.etc_dir.resolve("pull-replication.config");
     this.config = new FileBasedConfig(cfgPath.toFile(), FS.DETECTED);
-    this.pluginDataDir = pluginDataDir;
     load();
   }
 
@@ -79,15 +71,6 @@ public class ReplicationFileBasedConfig implements ReplicationConfig {
   @Override
   public boolean isDefaultForceUpdate() {
     return defaultForceUpdate;
-  }
-
-  @Override
-  public Path getEventsDirectory() {
-    String eventsDirectory = config.getString("replication", null, "eventsDirectory");
-    if (!Strings.isNullOrEmpty(eventsDirectory)) {
-      return site.resolve(eventsDirectory);
-    }
-    return pluginDataDir;
   }
 
   Path getCfgPath() {
