@@ -19,7 +19,9 @@ import com.google.gerrit.extensions.events.LifecycleListener;
 import com.google.gerrit.extensions.registration.DynamicItem;
 import com.google.gerrit.extensions.systemstatus.ServerInformation;
 import com.google.gerrit.server.events.EventDispatcher;
+import com.google.gerrit.server.git.WorkQueue;
 import com.google.inject.Inject;
+import com.googlesource.gerrit.plugins.replication.ReplicationConfig;
 import com.googlesource.gerrit.plugins.replication.ReplicationFilter;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -29,23 +31,29 @@ public class OnStartStop implements LifecycleListener {
   private final AtomicReference<Future<?>> fetchAllFuture;
   private final ServerInformation srvInfo;
   private final FetchAll.Factory fetchAll;
-  private final PullReplicationConfig config;
+  private final ReplicationConfig config;
   private final DynamicItem<EventDispatcher> eventDispatcher;
   private final ReplicationState.Factory replicationStateFactory;
+  private final SourcesCollection sourcesCollection;
+  private final WorkQueue workQueue;
 
   @Inject
   protected OnStartStop(
       ServerInformation srvInfo,
       FetchAll.Factory fetchAll,
-      PullReplicationConfig config,
+      ReplicationConfig config,
       DynamicItem<EventDispatcher> eventDispatcher,
-      ReplicationState.Factory replicationStateFactory) {
+      ReplicationState.Factory replicationStateFactory,
+      SourcesCollection sourcesCollection,
+      WorkQueue workQueue) {
     this.srvInfo = srvInfo;
     this.fetchAll = fetchAll;
     this.config = config;
     this.eventDispatcher = eventDispatcher;
     this.replicationStateFactory = replicationStateFactory;
     this.fetchAllFuture = Atomics.newReference();
+    this.sourcesCollection = sourcesCollection;
+    this.workQueue = workQueue;
   }
 
   @Override
@@ -60,6 +68,8 @@ public class OnStartStop implements LifecycleListener {
               .create(null, ReplicationFilter.all(), state, false)
               .schedule(30, TimeUnit.SECONDS));
     }
+
+    sourcesCollection.startup(workQueue);
   }
 
   @Override

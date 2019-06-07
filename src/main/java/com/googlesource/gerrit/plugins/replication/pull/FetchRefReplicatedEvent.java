@@ -14,9 +14,9 @@
 
 package com.googlesource.gerrit.plugins.replication.pull;
 
-import com.google.gerrit.reviewdb.client.Project;
+import com.google.gerrit.entities.Project;
 import com.google.gerrit.server.events.RefEvent;
-
+import java.util.Objects;
 import org.eclipse.jgit.lib.RefUpdate;
 
 public class FetchRefReplicatedEvent extends RefEvent {
@@ -43,8 +43,34 @@ public class FetchRefReplicatedEvent extends RefEvent {
   }
 
   @Override
+  public int hashCode() {
+    return Objects.hash(project, ref, status, refUpdateResult);
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    if (!(other instanceof FetchRefReplicatedEvent)) {
+      return false;
+    }
+    FetchRefReplicatedEvent event = (FetchRefReplicatedEvent) other;
+    if (!Objects.equals(event.project, this.project)) {
+      return false;
+    }
+    if (!Objects.equals(event.ref, this.ref)) {
+      return false;
+    }
+    if (!Objects.equals(event.sourceNode, this.sourceNode)) {
+      return false;
+    }
+    if (!Objects.equals(event.status, this.status)) {
+      return false;
+    }
+    return Objects.equals(event.refUpdateResult, this.refUpdateResult);
+  }
+
+  @Override
   public Project.NameKey getProjectNameKey() {
-    return new Project.NameKey(project);
+    return Project.nameKey(project);
   }
 
   @Override

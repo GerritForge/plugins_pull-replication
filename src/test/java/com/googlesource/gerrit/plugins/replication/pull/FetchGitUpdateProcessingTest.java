@@ -14,55 +14,33 @@
 
 package com.googlesource.gerrit.plugins.replication.pull;
 
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.createNiceMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.expectLastCall;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.reset;
-import static org.easymock.EasyMock.verify;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
-import com.google.gerrit.reviewdb.server.ReviewDb;
 import com.google.gerrit.server.events.EventDispatcher;
 import com.google.gerrit.server.permissions.PermissionBackendException;
-import com.google.gwtorm.client.KeyUtil;
-import com.google.gwtorm.server.OrmException;
-import com.google.gwtorm.server.SchemaFactory;
-import com.google.gwtorm.server.StandardKeyEncoder;
 import com.googlesource.gerrit.plugins.replication.pull.FetchResultProcessing.GitUpdateProcessing;
 import com.googlesource.gerrit.plugins.replication.pull.ReplicationState.RefFetchResult;
-
 import java.net.URISyntaxException;
 import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.transport.URIish;
 import org.junit.Before;
 import org.junit.Test;
 
-@SuppressWarnings("unchecked")
 public class FetchGitUpdateProcessingTest {
-  static {
-    KeyUtil.setEncoderImpl(new StandardKeyEncoder());
-  }
-
   private EventDispatcher dispatcherMock;
   private GitUpdateProcessing gitUpdateProcessing;
 
   @Before
   public void setUp() throws Exception {
-    dispatcherMock = createMock(EventDispatcher.class);
-    replay(dispatcherMock);
-    ReviewDb reviewDbMock = createNiceMock(ReviewDb.class);
-    replay(reviewDbMock);
-    SchemaFactory<ReviewDb> schemaMock = createMock(SchemaFactory.class);
-    expect(schemaMock.open()).andReturn(reviewDbMock).anyTimes();
-    replay(schemaMock);
+    dispatcherMock = mock(EventDispatcher.class);
     gitUpdateProcessing = new GitUpdateProcessing(dispatcherMock);
   }
 
   @Test
-  public void headRefReplicated()
-      throws URISyntaxException, OrmException, PermissionBackendException {
-    reset(dispatcherMock);
+  public void headRefReplicated() throws URISyntaxException, PermissionBackendException {
     FetchRefReplicatedEvent expectedEvent =
         new FetchRefReplicatedEvent(
             "someProject",
@@ -70,9 +48,6 @@ public class FetchGitUpdateProcessingTest {
             "someHost",
             RefFetchResult.SUCCEEDED,
             RefUpdate.Result.NEW);
-    dispatcherMock.postEvent(FetchRefReplicatedEventEquals.eqEvent(expectedEvent));
-    expectLastCall().once();
-    replay(dispatcherMock);
 
     gitUpdateProcessing.onOneProjectReplicationDone(
         "someProject",
@@ -80,13 +55,11 @@ public class FetchGitUpdateProcessingTest {
         new URIish("git://someHost/someProject.git"),
         RefFetchResult.SUCCEEDED,
         RefUpdate.Result.NEW);
-    verify(dispatcherMock);
+    verify(dispatcherMock, times(1)).postEvent(eq(expectedEvent));
   }
 
   @Test
-  public void changeRefReplicated()
-      throws URISyntaxException, OrmException, PermissionBackendException {
-    reset(dispatcherMock);
+  public void changeRefReplicated() throws URISyntaxException, PermissionBackendException {
     FetchRefReplicatedEvent expectedEvent =
         new FetchRefReplicatedEvent(
             "someProject",
@@ -94,9 +67,6 @@ public class FetchGitUpdateProcessingTest {
             "someHost",
             RefFetchResult.FAILED,
             RefUpdate.Result.REJECTED_OTHER_REASON);
-    dispatcherMock.postEvent(FetchRefReplicatedEventEquals.eqEvent(expectedEvent));
-    expectLastCall().once();
-    replay(dispatcherMock);
 
     gitUpdateProcessing.onOneProjectReplicationDone(
         "someProject",
@@ -104,19 +74,15 @@ public class FetchGitUpdateProcessingTest {
         new URIish("git://someHost/someProject.git"),
         RefFetchResult.FAILED,
         RefUpdate.Result.REJECTED_OTHER_REASON);
-    verify(dispatcherMock);
+    verify(dispatcherMock, times(1)).postEvent(eq(expectedEvent));
   }
 
   @Test
-  public void onAllNodesReplicated() throws OrmException, PermissionBackendException {
-    reset(dispatcherMock);
+  public void onAllNodesReplicated() throws PermissionBackendException {
     FetchRefReplicationDoneEvent expectedDoneEvent =
         new FetchRefReplicationDoneEvent("someProject", "refs/heads/master", 5);
-    dispatcherMock.postEvent(FetchRefReplicationDoneEventEquals.eqEvent(expectedDoneEvent));
-    expectLastCall().once();
-    replay(dispatcherMock);
 
     gitUpdateProcessing.onRefReplicatedFromAllNodes("someProject", "refs/heads/master", 5);
-    verify(dispatcherMock);
+    verify(dispatcherMock, times(1)).postEvent(eq(expectedDoneEvent));
   }
 }

@@ -18,7 +18,6 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.google.inject.assistedinject.Assisted;
 import com.google.inject.assistedinject.AssistedInject;
-
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -86,7 +85,7 @@ public class ReplicationState {
     fetchResultProcessing.onOneProjectReplicationDone(project, ref, uri, status, refUpdateResult);
 
     RefReplicationStatus completedRefStatus = null;
-    boolean allFetchTaksCompleted = false;
+    boolean allFetchTasksCompleted = false;
     countingLock.lock();
     try {
       RefReplicationStatus refStatus = getRefStatus(project, ref);
@@ -97,7 +96,7 @@ public class ReplicationState {
         if (refStatus.allDone()) {
           completedRefStatus = statusByProjectRef.remove(project, ref);
         }
-        allFetchTaksCompleted = finishedFetchTasksCount == totalFetchTasksCount;
+        allFetchTasksCompleted = finishedFetchTasksCount == totalFetchTasksCount;
       }
     } finally {
       countingLock.unlock();
@@ -107,7 +106,7 @@ public class ReplicationState {
       doRefFetchTasksCompleted(completedRefStatus);
     }
 
-    if (allFetchTaksCompleted) {
+    if (allFetchTasksCompleted) {
       doAllFetchTasksCompleted();
     }
   }

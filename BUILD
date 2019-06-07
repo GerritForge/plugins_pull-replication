@@ -8,7 +8,6 @@ gerrit_plugin(
         "Implementation-Title: Pull Replication plugin",
         "Implementation-URL: https://gerrit-review.googlesource.com/#/admin/projects/plugins/pull-replication",
         "Gerrit-PluginName: pull-replication",
-        "Gerrit-InitStep: com.googlesource.gerrit.plugins.replication.pull.Init",
         "Gerrit-Module: com.googlesource.gerrit.plugins.replication.pull.PullReplicationModule",
         "Gerrit-SshModule: com.googlesource.gerrit.plugins.replication.pull.SshModule",
     ],
@@ -26,19 +25,6 @@ junit_tests(
     visibility = ["//visibility:public"],
     deps = PLUGIN_TEST_DEPS + PLUGIN_DEPS + [
         ":pull-replication__plugin",
-        ":pull-replication_util",
         "//plugins/replication:replication",
-    ],
-)
-
-java_library(
-    name = "pull-replication_util",
-    testonly = True,
-    srcs = glob(
-        ["src/test/java/**/*.java"],
-        exclude = ["src/test/java/**/*Test.java"],
-    ),
-    deps = PLUGIN_TEST_DEPS + PLUGIN_DEPS + [
-        ":pull-replication__plugin",
     ],
 )

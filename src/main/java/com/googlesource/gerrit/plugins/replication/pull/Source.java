@@ -14,6 +14,7 @@
 
 package com.googlesource.gerrit.plugins.replication.pull;
 
+import static com.googlesource.gerrit.plugins.replication.ReplicationFileBasedConfig.replaceName;
 import static com.googlesource.gerrit.plugins.replication.pull.FetchResultProcessing.resolveNodeName;
 
 import com.google.common.base.Throwables;
@@ -23,21 +24,19 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSet.Builder;
 import com.google.common.collect.Lists;
 import com.google.gerrit.common.data.GroupReference;
+import com.google.gerrit.entities.AccountGroup;
+import com.google.gerrit.entities.BranchNameKey;
+import com.google.gerrit.entities.Project;
+import com.google.gerrit.entities.RefNames;
 import com.google.gerrit.extensions.config.FactoryModule;
 import com.google.gerrit.extensions.registration.DynamicItem;
 import com.google.gerrit.extensions.restapi.AuthException;
-import com.google.gerrit.reviewdb.client.AccountGroup;
-import com.google.gerrit.reviewdb.client.Branch;
-import com.google.gerrit.reviewdb.client.Project;
-import com.google.gerrit.reviewdb.client.RefNames;
-import com.google.gerrit.reviewdb.server.ReviewDb;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.PluginUser;
 import com.google.gerrit.server.account.GroupBackend;
 import com.google.gerrit.server.account.GroupBackends;
 import com.google.gerrit.server.account.GroupIncludeCache;
 import com.google.gerrit.server.account.ListGroupMembership;
-import com.google.gerrit.server.config.RequestScopedReviewDbProvider;
 import com.google.gerrit.server.events.EventDispatcher;
 import com.google.gerrit.server.git.GitRepositoryManager;
 import com.google.gerrit.server.git.PerThreadRequestScope;
@@ -74,13 +73,12 @@ import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteConfig;
 import org.eclipse.jgit.transport.URIish;
 import org.slf4j.Logger;
 
 public class Source {
-  private static final Logger repLog = PullReplicationQueue.repLog;
+  private static final Logger repLog = PullReplicationLogger.repLog;
 
   public interface Factory {
     Source create(SourceConfiguration config);
@@ -126,7 +124,7 @@ public class Source {
       Provider<CurrentUser> userProvider,
       ProjectCache projectCache,
       GroupBackend groupBackend,
-      ReplicationStateListener stateLog,
+      ReplicationStateListeners stateLog,
       GroupIncludeCache groupIncludeCache,
       DynamicItem<EventDispatcher> eventDispatcher) {
     config = cfg;
@@ -169,18 +167,12 @@ public class Source {
 
               @Provides
               public PerThreadRequestScope.Scoper provideScoper(
-                  final PerThreadRequestScope.Propagator propagator,
-                  final Provider<RequestScopedReviewDbProvider> dbProvider) {
+                  final PerThreadRequestScope.Propagator propagator) {
                 final RequestContext requestContext =
                     new RequestContext() {
                       @Override
                       public CurrentUser getUser() {
                         return remoteUser;
-                      }
-
-                      @Override
-                      public Provider<ReviewDb> getReviewDbProvider() {
-                        return dbProvider.get();
                       }
                     };
                 return new PerThreadRequestScope.Scoper() {
@@ -522,46 +514,8 @@ public class Source {
     return (new ReplicationFilter(projects)).matches(project);
   }
 
-  boolean isSingleProjectMatch() {
-    List<String> projects = config.getProjects();
-    boolean ret = (projects.size() == 1);
-    if (ret) {
-      String projectMatch = projects.get(0);
-      if (ReplicationFilter.getPatternType(projectMatch)
-          != ReplicationFilter.PatternType.EXACT_MATCH) {
-        // projectMatch is either regular expression, or wild-card.
-        //
-        // Even though they might refer to a single project now, they need not
-        // after new projects have been created. Hence, we do not treat them as
-        // matching a single project.
-        ret = false;
-      }
-    }
-    return ret;
-  }
-
-  boolean wouldFetchRef(String ref) {
-    if (!config.replicatePermissions() && RefNames.REFS_CONFIG.equals(ref)) {
-      return false;
-    }
-    for (RefSpec s : config.getRemoteConfig().getFetchRefSpecs()) {
-      if (s.matchSource(ref)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  boolean isCreateMissingRepos() {
-    return config.createMissingRepos();
-  }
-
-  boolean isReplicatePermissions() {
-    return config.replicatePermissions();
-  }
-
-  boolean isReplicateProjectDeletions() {
-    return config.replicateProjectDeletions();
+  public boolean isSingleProjectMatch() {
+    return config.isSingleProjectMatch();
   }
 
   List<URIish> getURIs(Project.NameKey project, String urlMatch) {
@@ -582,8 +536,7 @@ public class Source {
         } else if (!remoteNameStyle.equals("slash")) {
           repLog.debug("Unknown remoteNameStyle: {}, falling back to slash", remoteNameStyle);
         }
-        String replacedPath =
-            PullReplicationQueue.replaceName(uri.getPath(), name, isSingleProjectMatch());
+        String replacedPath = replaceName(uri.getPath(), name, isSingleProjectMatch());
         if (replacedPath != null) {
           uri = uri.setPath(replacedPath);
           r.add(uri);
@@ -659,7 +612,7 @@ public class Source {
       FetchReplicationScheduledEvent event =
           new FetchReplicationScheduledEvent(project.get(), ref, targetNode);
       try {
-        eventDispatcher.get().postEvent(new Branch.NameKey(project, ref), event);
+        eventDispatcher.get().postEvent(BranchNameKey.create(project, ref), event);
       } catch (PermissionBackendException e) {
         repLog.error("error posting event", e);
       }
@@ -674,7 +627,7 @@ public class Source {
           new FetchRefReplicatedEvent(
               project.get(), ref, sourceNode, ReplicationState.RefFetchResult.FAILED, result);
       try {
-        eventDispatcher.get().postEvent(new Branch.NameKey(project, ref), event);
+        eventDispatcher.get().postEvent(BranchNameKey.create(project, ref), event);
       } catch (PermissionBackendException e) {
         repLog.error("error posting event", e);
       }

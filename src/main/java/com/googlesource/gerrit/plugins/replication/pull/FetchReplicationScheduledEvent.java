@@ -14,7 +14,7 @@
 
 package com.googlesource.gerrit.plugins.replication.pull;
 
-import com.google.gerrit.reviewdb.client.Project;
+import com.google.gerrit.entities.Project;
 import com.google.gerrit.server.events.RefEvent;
 
 public class FetchReplicationScheduledEvent extends RefEvent {
@@ -38,6 +38,6 @@ public class FetchReplicationScheduledEvent extends RefEvent {
 
   @Override
   public Project.NameKey getProjectNameKey() {
-    return new Project.NameKey(project);
+    return Project.nameKey(project);
   }
 }

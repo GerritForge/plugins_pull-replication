@@ -15,11 +15,9 @@
 package com.googlesource.gerrit.plugins.replication.pull;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.easymock.EasyMock.createNiceMock;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.resetToDefault;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.net.URISyntaxException;
 import org.eclipse.jgit.lib.RefUpdate;
@@ -34,8 +32,7 @@ public class ReplicationStateTest {
 
   @Before
   public void setUp() throws Exception {
-    fetchResultProcessingMock = createNiceMock(FetchResultProcessing.class);
-    replay(fetchResultProcessingMock);
+    fetchResultProcessingMock = mock(FetchResultProcessing.class);
     replicationState = new ReplicationState(fetchResultProcessingMock);
   }
 
@@ -52,32 +49,16 @@ public class ReplicationStateTest {
 
   @Test
   public void shouldFireOneReplicationEventWhenNothingToReplicate() {
-    resetToDefault(fetchResultProcessingMock);
-
-    // expected event
-    fetchResultProcessingMock.onAllRefsReplicatedFromAllNodes(0);
-    replay(fetchResultProcessingMock);
-
     // actual test
     replicationState.markAllFetchTasksScheduled();
-    verify(fetchResultProcessingMock);
+
+    // expected event
+    verify(fetchResultProcessingMock).onAllRefsReplicatedFromAllNodes(0);
   }
 
   @Test
   public void shouldFireEventsForReplicationOfOneRefToOneNode() throws URISyntaxException {
-    resetToDefault(fetchResultProcessingMock);
     URIish uri = new URIish("git://someHost/someRepo.git");
-
-    // expected events
-    fetchResultProcessingMock.onOneProjectReplicationDone(
-        "someProject",
-        "someRef",
-        uri,
-        ReplicationState.RefFetchResult.SUCCEEDED,
-        RefUpdate.Result.NEW);
-    fetchResultProcessingMock.onRefReplicatedFromAllNodes("someProject", "someRef", 1);
-    fetchResultProcessingMock.onAllRefsReplicatedFromAllNodes(1);
-    replay(fetchResultProcessingMock);
 
     // actual test
     replicationState.increaseFetchTaskCount("someProject", "someRef");
@@ -88,53 +69,25 @@ public class ReplicationStateTest {
         uri,
         ReplicationState.RefFetchResult.SUCCEEDED,
         RefUpdate.Result.NEW);
-    verify(fetchResultProcessingMock);
+
+    // expected events
+    fetchResultProcessingMock.onOneProjectReplicationDone(
+        "someProject",
+        "someRef",
+        uri,
+        ReplicationState.RefFetchResult.SUCCEEDED,
+        RefUpdate.Result.NEW);
+
+    verify(fetchResultProcessingMock).onRefReplicatedFromAllNodes("someProject", "someRef", 1);
+    verify(fetchResultProcessingMock).onAllRefsReplicatedFromAllNodes(1);
   }
 
   @Test
   public void shouldFireEventsForReplicationOfMultipleRefsToMultipleNodes()
       throws URISyntaxException {
-    resetToDefault(fetchResultProcessingMock);
     URIish uri1 = new URIish("git://host1/someRepo.git");
     URIish uri2 = new URIish("git://host2/someRepo.git");
     URIish uri3 = new URIish("git://host3/someRepo.git");
-
-    // expected events
-    fetchResultProcessingMock.onOneProjectReplicationDone(
-        "someProject",
-        "ref1",
-        uri1,
-        ReplicationState.RefFetchResult.SUCCEEDED,
-        RefUpdate.Result.NEW);
-    fetchResultProcessingMock.onOneProjectReplicationDone(
-        "someProject",
-        "ref1",
-        uri2,
-        ReplicationState.RefFetchResult.SUCCEEDED,
-        RefUpdate.Result.NEW);
-    fetchResultProcessingMock.onOneProjectReplicationDone(
-        "someProject",
-        "ref1",
-        uri3,
-        ReplicationState.RefFetchResult.SUCCEEDED,
-        RefUpdate.Result.NEW);
-    fetchResultProcessingMock.onOneProjectReplicationDone(
-        "someProject",
-        "ref2",
-        uri1,
-        ReplicationState.RefFetchResult.SUCCEEDED,
-        RefUpdate.Result.NEW);
-    fetchResultProcessingMock.onOneProjectReplicationDone(
-        "someProject",
-        "ref2",
-        uri2,
-        ReplicationState.RefFetchResult.SUCCEEDED,
-        RefUpdate.Result.NEW);
-
-    fetchResultProcessingMock.onRefReplicatedFromAllNodes("someProject", "ref1", 3);
-    fetchResultProcessingMock.onRefReplicatedFromAllNodes("someProject", "ref2", 2);
-    fetchResultProcessingMock.onAllRefsReplicatedFromAllNodes(5);
-    replay(fetchResultProcessingMock);
 
     // actual test
     replicationState.increaseFetchTaskCount("someProject", "ref1");
@@ -176,32 +129,52 @@ public class ReplicationStateTest {
         ReplicationState.RefFetchResult.SUCCEEDED,
         RefUpdate.Result.NEW);
 
-    verify(fetchResultProcessingMock);
+    // expected events
+    verify(fetchResultProcessingMock)
+        .onOneProjectReplicationDone(
+            "someProject",
+            "ref1",
+            uri1,
+            ReplicationState.RefFetchResult.SUCCEEDED,
+            RefUpdate.Result.NEW);
+    verify(fetchResultProcessingMock)
+        .onOneProjectReplicationDone(
+            "someProject",
+            "ref1",
+            uri2,
+            ReplicationState.RefFetchResult.SUCCEEDED,
+            RefUpdate.Result.NEW);
+    verify(fetchResultProcessingMock)
+        .onOneProjectReplicationDone(
+            "someProject",
+            "ref1",
+            uri3,
+            ReplicationState.RefFetchResult.SUCCEEDED,
+            RefUpdate.Result.NEW);
+    verify(fetchResultProcessingMock)
+        .onOneProjectReplicationDone(
+            "someProject",
+            "ref2",
+            uri1,
+            ReplicationState.RefFetchResult.SUCCEEDED,
+            RefUpdate.Result.NEW);
+    verify(fetchResultProcessingMock)
+        .onOneProjectReplicationDone(
+            "someProject",
+            "ref2",
+            uri2,
+            ReplicationState.RefFetchResult.SUCCEEDED,
+            RefUpdate.Result.NEW);
+
+    verify(fetchResultProcessingMock).onRefReplicatedFromAllNodes("someProject", "ref1", 3);
+    verify(fetchResultProcessingMock).onRefReplicatedFromAllNodes("someProject", "ref2", 2);
+    verify(fetchResultProcessingMock).onAllRefsReplicatedFromAllNodes(5);
   }
 
   @Test
   public void shouldFireEventsWhenSomeReplicationCompleteBeforeAllTasksAreScheduled()
       throws URISyntaxException {
-    resetToDefault(fetchResultProcessingMock);
     URIish uri1 = new URIish("git://host1/someRepo.git");
-
-    // expected events
-    fetchResultProcessingMock.onOneProjectReplicationDone(
-        "someProject",
-        "ref1",
-        uri1,
-        ReplicationState.RefFetchResult.SUCCEEDED,
-        RefUpdate.Result.NEW);
-    fetchResultProcessingMock.onOneProjectReplicationDone(
-        "someProject",
-        "ref2",
-        uri1,
-        ReplicationState.RefFetchResult.SUCCEEDED,
-        RefUpdate.Result.NEW);
-    fetchResultProcessingMock.onRefReplicatedFromAllNodes("someProject", "ref1", 1);
-    fetchResultProcessingMock.onRefReplicatedFromAllNodes("someProject", "ref2", 1);
-    fetchResultProcessingMock.onAllRefsReplicatedFromAllNodes(2);
-    replay(fetchResultProcessingMock);
 
     // actual test
     replicationState.increaseFetchTaskCount("someProject", "ref1");
@@ -219,7 +192,25 @@ public class ReplicationStateTest {
         ReplicationState.RefFetchResult.SUCCEEDED,
         RefUpdate.Result.NEW);
     replicationState.markAllFetchTasksScheduled();
-    verify(fetchResultProcessingMock);
+
+    // expected events
+    verify(fetchResultProcessingMock)
+        .onOneProjectReplicationDone(
+            "someProject",
+            "ref1",
+            uri1,
+            ReplicationState.RefFetchResult.SUCCEEDED,
+            RefUpdate.Result.NEW);
+    verify(fetchResultProcessingMock)
+        .onOneProjectReplicationDone(
+            "someProject",
+            "ref2",
+            uri1,
+            ReplicationState.RefFetchResult.SUCCEEDED,
+            RefUpdate.Result.NEW);
+    verify(fetchResultProcessingMock).onRefReplicatedFromAllNodes("someProject", "ref1", 1);
+    verify(fetchResultProcessingMock).onRefReplicatedFromAllNodes("someProject", "ref2", 1);
+    verify(fetchResultProcessingMock).onAllRefsReplicatedFromAllNodes(2);
   }
 
   @Test

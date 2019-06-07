@@ -14,15 +14,15 @@
 
 package com.googlesource.gerrit.plugins.replication.pull;
 
-import static com.googlesource.gerrit.plugins.replication.pull.PullReplicationQueue.repLog;
+import static com.googlesource.gerrit.plugins.replication.pull.PullReplicationLogger.repLog;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Sets;
+import com.google.gerrit.entities.Project;
 import com.google.gerrit.metrics.Timer1;
-import com.google.gerrit.reviewdb.client.Project;
 import com.google.gerrit.server.git.GitRepositoryManager;
 import com.google.gerrit.server.git.PerThreadRequestScope;
 import com.google.gerrit.server.git.ProjectRunnable;
@@ -102,7 +102,7 @@ class FetchOne implements ProjectRunnable, CanceledWhileRunning {
       CredentialsFactory cpFactory,
       PerThreadRequestScope.Scoper ts,
       IdGenerator ig,
-      ReplicationStateListener sl,
+      ReplicationStateListeners sl,
       FetchReplicationMetrics m,
       @Assisted Project.NameKey d,
       @Assisted URIish u) {
@@ -278,14 +278,14 @@ class FetchOne implements ProjectRunnable, CanceledWhileRunning {
     if (!pool.requestRunway(this)) {
       if (!canceled) {
         repLog.info(
-            "Rescheduling replication to {} to avoid collision with an in-flight push.", uri);
+            "Rescheduling replication to {} to avoid collision with an in-flight fetch.", uri);
         pool.reschedule(this, Source.RetryReason.COLLISION);
       }
       return;
     }
 
     repLog.info("Replication from {} started...", uri);
-    Timer1.Context context = metrics.start(config.getName());
+    Timer1.Context<String> context = metrics.start(config.getName());
     try {
       long startedAt = context.getStartTime();
       long delay = NANOSECONDS.toMillis(startedAt - createdAt);
@@ -369,8 +369,7 @@ class FetchOne implements ProjectRunnable, CanceledWhileRunning {
     updateStates(res.getTrackingRefUpdates());
   }
 
-  private FetchResult fetchVia(Transport tn)
-      throws IOException, NotSupportedException, TransportException {
+  private FetchResult fetchVia(Transport tn) throws IOException {
     tn.applyConfig(config);
     tn.setCredentialsProvider(credentialsProvider);
 

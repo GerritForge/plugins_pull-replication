@@ -18,101 +18,83 @@ import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import com.google.common.flogger.FluentLogger;
 import com.google.gerrit.server.git.WorkQueue;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.googlesource.gerrit.plugins.replication.RemoteConfiguration;
+import com.googlesource.gerrit.plugins.replication.ReplicationConfigValidator;
+import com.googlesource.gerrit.plugins.replication.ReplicationFileBasedConfig;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.eclipse.jgit.errors.ConfigInvalidException;
-import org.eclipse.jgit.lib.Config;
-import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.transport.RemoteConfig;
 import org.eclipse.jgit.transport.URIish;
 
 @Singleton
-public class SourcesCollection {
+public class SourcesCollection implements ReplicationSources, ReplicationConfigValidator {
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
-  private final PullReplicationConfig replicationConfig;
   private final Source.Factory sourceFactory;
-  private List<Source> sources;
+  private volatile List<Source> sources;
+  private boolean shuttingDown;
 
   @Inject
-  public SourcesCollection(PullReplicationConfig replicationConfig, Source.Factory sourceFactory) {
-    this.replicationConfig = replicationConfig;
+  public SourcesCollection(
+      ReplicationFileBasedConfig replicationConfig, Source.Factory sourceFactory, EventBus eventBus)
+      throws ConfigInvalidException {
     this.sourceFactory = sourceFactory;
+    this.sources = allSources(sourceFactory, validateConfig(replicationConfig));
+    eventBus.register(this);
   }
 
-  private void load() throws ConfigInvalidException {
-    this.sources = allSources();
-  }
-
+  @Override
   public List<Source> getAll() {
-    if (replicationConfig.reloadIfNeeded()) {
-      try {
-        load();
-      } catch (ConfigInvalidException e) {
-        logger.atWarning().withCause(e).log("Unable to load new sources");
-      }
-    }
-
     return sources.stream().filter(Objects::nonNull).collect(toList());
   }
 
-  List<Source> allSources() throws ConfigInvalidException {
-
-    ImmutableList.Builder<Source> sources = ImmutableList.builder();
-    for (RemoteConfig c : allRemotes()) {
-      if (c.getURIs().isEmpty()) {
-        continue;
-      }
-
-      // If source is not set, assume everything.
-      if (c.getFetchRefSpecs().isEmpty()) {
-        c.addFetchRefSpec(
-            new RefSpec()
-                .setSourceDestination("refs/*", "refs/*")
-                .setForceUpdate(replicationConfig.isDefaultForceUpdate()));
-      }
-
-      Source source =
-          sourceFactory.create(new SourceConfiguration(c, replicationConfig.getConfig()));
-
-      if (!source.isSingleProjectMatch()) {
-        for (URIish u : c.getURIs()) {
-          if (u.getPath() == null || !u.getPath().contains("${name}")) {
-            throw new ConfigInvalidException(
-                String.format("remote.%s.url \"%s\" lacks ${name} placeholder", c.getName(), u));
-          }
-        }
-      }
-
-      sources.add(source);
-    }
-
-    List<Source> srcs = sources.build();
-    logger.atInfo().log("%d replication sources loaded", srcs.size());
-    return srcs;
+  private List<Source> allSources(
+      Source.Factory sourceFactory, List<RemoteConfiguration> sourceConfigurations) {
+    return sourceConfigurations.stream()
+        .filter((c) -> c instanceof SourceConfiguration)
+        .map((c) -> (SourceConfiguration) c)
+        .map(sourceFactory::create)
+        .collect(toList());
   }
 
-  private List<RemoteConfig> allRemotes() throws ConfigInvalidException {
-    Config config = replicationConfig.getConfig();
-    Set<String> names = config.getSubsections("remote");
-    List<RemoteConfig> result = Lists.newArrayListWithCapacity(names.size());
-    for (String name : names) {
-      try {
-        result.add(new RemoteConfig(config, name));
-      } catch (URISyntaxException e) {
-        throw new ConfigInvalidException(String.format("remote %s has invalid URL", name));
-      }
+  @Override
+  public void startup(WorkQueue workQueue) {
+    shuttingDown = false;
+    for (Source cfg : sources) {
+      cfg.start(workQueue);
     }
-    return result;
   }
 
+  /* shutdown() cannot be set as a synchronized method because
+   * it may need to wait for pending events to complete;
+   * e.g. when enabling the drain of replication events before
+   * shutdown.
+   *
+   * As a rule of thumb for synchronized methods, because they
+   * implicitly define a critical section and associated lock,
+   * they should never hold waiting for another resource, otherwise
+   * the risk of deadlock is very high.
+   *
+   * See more background about deadlocks, what they are and how to
+   * prevent them at: https://en.wikipedia.org/wiki/Deadlock
+   */
+  @Override
   public int shutdown() {
+    synchronized (this) {
+      shuttingDown = true;
+    }
+
     int discarded = 0;
     for (Source cfg : sources) {
       discarded += cfg.shutdown();
@@ -120,10 +102,80 @@ public class SourcesCollection {
     return discarded;
   }
 
-  public void startup(WorkQueue workQueue) throws ConfigInvalidException {
-    load();
-    for (Source cfg : sources) {
-      cfg.start(workQueue);
+  @Override
+  public boolean isEmpty() {
+    return sources.isEmpty();
+  }
+
+  @Subscribe
+  public synchronized void onReload(List<RemoteConfiguration> sourceConfigurations) {
+    if (shuttingDown) {
+      logger.atWarning().log("Shutting down: configuration reload ignored");
+      return;
     }
+
+    sources = allSources(sourceFactory, sourceConfigurations);
+    logger.atInfo().log("Configuration reloaded: %d sources", getAll().size());
+  }
+
+  @Override
+  public List<RemoteConfiguration> validateConfig(ReplicationFileBasedConfig newConfig)
+      throws ConfigInvalidException {
+
+    try {
+      newConfig.getConfig().load();
+    } catch (IOException e) {
+      throw new ConfigInvalidException(
+          String.format("Cannot read %s: %s", newConfig.getConfig().getFile(), e.getMessage()), e);
+    }
+
+    ImmutableList.Builder<RemoteConfiguration> sourceConfigs = ImmutableList.builder();
+    for (RemoteConfig c : allFetchRemotes(newConfig.getConfig())) {
+      if (c.getURIs().isEmpty()) {
+        continue;
+      }
+
+      // fetch source has to be specified.
+      if (c.getFetchRefSpecs().isEmpty()) {
+        throw new ConfigInvalidException(
+            String.format("You must specify a valid refSpec for this remote"));
+      }
+
+      SourceConfiguration sourceConfig = new SourceConfiguration(c, newConfig.getConfig());
+
+      if (!sourceConfig.isSingleProjectMatch()) {
+        for (URIish u : c.getURIs()) {
+          if (u.getPath() == null || !u.getPath().contains("${name}")) {
+            throw new ConfigInvalidException(
+                String.format("remote.%s.url \"%s\" lacks ${name} placeholder", c.getName(), u));
+          }
+        }
+      }
+      sourceConfigs.add(sourceConfig);
+    }
+    return sourceConfigs.build();
+  }
+
+  private static List<RemoteConfig> allFetchRemotes(FileBasedConfig cfg)
+      throws ConfigInvalidException {
+
+    Set<String> names = cfg.getSubsections("remote");
+    List<RemoteConfig> result = Lists.newArrayListWithCapacity(names.size());
+    for (String name : names) {
+      try {
+        final RemoteConfig remoteConfig = new RemoteConfig(cfg, name);
+        if (!remoteConfig.getFetchRefSpecs().isEmpty()) {
+          result.add(remoteConfig);
+        } else {
+          logger.atWarning().log(
+              "Skip loading of remote [remote \"%s\"], since it has no 'fetch' configuration",
+              name);
+        }
+      } catch (URISyntaxException e) {
+        throw new ConfigInvalidException(
+            String.format("remote %s has invalid URL in %s", name, cfg.getFile()));
+      }
+    }
+    return result;
   }
 }

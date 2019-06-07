@@ -15,15 +15,15 @@
 package com.googlesource.gerrit.plugins.replication.pull;
 
 import com.google.gerrit.common.Nullable;
-import com.google.gerrit.reviewdb.client.Project;
+import com.google.gerrit.entities.Project;
 import com.google.gerrit.server.git.WorkQueue;
 import com.google.gerrit.server.project.ProjectCache;
 import com.google.inject.Inject;
 import com.google.inject.assistedinject.Assisted;
 import com.googlesource.gerrit.plugins.replication.ReplicationFilter;
-
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.eclipse.jgit.transport.URIish;
 
 public class FetchAll implements Runnable {
   private final ReplicationStateListener stateLog;
@@ -34,26 +34,26 @@ public class FetchAll implements Runnable {
 
   private final WorkQueue workQueue;
   private final ProjectCache projectCache;
-  private final PullReplicationQueue replication;
   private final String urlMatch;
   private final ReplicationFilter filter;
   private final ReplicationState state;
   private final boolean now;
+  private final SourcesCollection sources;
 
   @Inject
   protected FetchAll(
       WorkQueue wq,
       ProjectCache projectCache,
-      PullReplicationQueue rq,
-      ReplicationStateListener stateLog,
+      ReplicationStateListeners stateLog,
+      SourcesCollection sources,
       @Assisted @Nullable String urlMatch,
       @Assisted ReplicationFilter filter,
       @Assisted ReplicationState state,
       @Assisted boolean now) {
     this.workQueue = wq;
     this.projectCache = projectCache;
-    this.replication = rq;
     this.stateLog = stateLog;
+    this.sources = sources;
     this.urlMatch = urlMatch;
     this.filter = filter;
     this.state = state;
@@ -69,7 +69,7 @@ public class FetchAll implements Runnable {
     try {
       for (Project.NameKey nameKey : projectCache.all()) {
         if (filter.matches(nameKey)) {
-          replication.scheduleFullSync(nameKey, urlMatch, state, now);
+          scheduleFullSync(nameKey, urlMatch, state, now);
         }
       }
     } catch (Exception e) {
@@ -78,11 +78,23 @@ public class FetchAll implements Runnable {
     state.markAllFetchTasksScheduled();
   }
 
+  private void scheduleFullSync(
+      Project.NameKey project, String urlMatch, ReplicationState state, boolean now) {
+
+    for (Source cfg : sources.getAll()) {
+      if (cfg.wouldFetchProject(project)) {
+        for (URIish uri : cfg.getURIs(project, urlMatch)) {
+          cfg.schedule(project, FetchOne.ALL_REFS, uri, state, now);
+        }
+      }
+    }
+  }
+
   @Override
   public String toString() {
     String s = "Replicate All Projects";
     if (urlMatch != null) {
-      s = s + " to " + urlMatch;
+      s = s + " from " + urlMatch;
     }
     return s;
   }

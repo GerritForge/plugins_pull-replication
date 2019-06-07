@@ -18,7 +18,6 @@ import com.google.gerrit.extensions.systemstatus.ServerInformation;
 import com.google.gerrit.server.util.PluginLogFile;
 import com.google.gerrit.server.util.SystemLog;
 import com.google.inject.Inject;
-
 import org.apache.log4j.PatternLayout;
 
 public class PullReplicationLogFile extends PluginLogFile {
@@ -28,7 +27,7 @@ public class PullReplicationLogFile extends PluginLogFile {
     super(
         systemLog,
         serverInfo,
-        PullReplicationQueue.PULL_REPLICATION_LOG_NAME,
+        PullReplicationLogger.PULL_REPLICATION_LOG_NAME,
         new PatternLayout("[%d] [%X{" + FetchOne.ID_MDC_KEY + "}] %m%n"));
   }
 }

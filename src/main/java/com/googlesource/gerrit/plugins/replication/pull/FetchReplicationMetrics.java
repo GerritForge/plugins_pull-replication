@@ -14,11 +14,13 @@
 
 package com.googlesource.gerrit.plugins.replication.pull;
 
+import com.google.gerrit.extensions.annotations.PluginName;
 import com.google.gerrit.metrics.Description;
 import com.google.gerrit.metrics.Field;
 import com.google.gerrit.metrics.Histogram1;
 import com.google.gerrit.metrics.MetricMaker;
 import com.google.gerrit.metrics.Timer1;
+import com.google.gerrit.server.logging.PluginMetadata;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
@@ -29,8 +31,15 @@ public class FetchReplicationMetrics {
   private final Histogram1<String> executionRetries;
 
   @Inject
-  FetchReplicationMetrics(MetricMaker metricMaker) {
-    Field<String> SOURCE_FIELD = Field.ofString("source");
+  FetchReplicationMetrics(@PluginName String pluginName, MetricMaker metricMaker) {
+    Field<String> SOURCE_FIELD =
+        Field.ofString(
+                "source",
+                (metadataBuilder, fieldValue) ->
+                    metadataBuilder
+                        .pluginName(pluginName)
+                        .addPluginMetadata(PluginMetadata.create("source", fieldValue)))
+            .build();
 
     executionTime =
         metricMaker.newTimer(
@@ -60,17 +69,17 @@ public class FetchReplicationMetrics {
   /**
    * Start the replication latency timer from a source.
    *
-   * @param name the destination name.
+   * @param name the source name.
    * @return the timer context.
    */
-  public Timer1.Context start(String name) {
+  public Timer1.Context<String> start(String name) {
     return executionTime.start(name);
   }
 
   /**
    * Record the replication delay and retry metrics for a source.
    *
-   * @param name the destination name.
+   * @param name the source name.
    * @param delay replication delay in milliseconds.
    * @param retries number of retries.
    */

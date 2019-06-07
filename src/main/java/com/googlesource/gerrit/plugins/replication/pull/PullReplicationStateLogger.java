@@ -14,7 +14,7 @@
 
 package com.googlesource.gerrit.plugins.replication.pull;
 
-import static com.googlesource.gerrit.plugins.replication.pull.PullReplicationQueue.repLog;
+import static com.googlesource.gerrit.plugins.replication.pull.PullReplicationLogger.repLog;
 
 import com.google.inject.Singleton;
 
@@ -26,7 +26,7 @@ import com.google.inject.Singleton;
  * state to the stderr console.
  */
 @Singleton
-class ReplicationStateLogger implements ReplicationStateListener {
+class PullReplicationStateLogger implements ReplicationStateListener {
 
   @Override
   public void warn(String msg, ReplicationState... states) {

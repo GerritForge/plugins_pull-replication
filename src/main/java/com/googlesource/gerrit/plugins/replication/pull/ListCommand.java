@@ -23,13 +23,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.inject.Inject;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import org.kohsuke.args4j.Option;
 
 @RequiresCapability(GlobalCapability.ADMINISTRATE_SERVER)
-@CommandMetaData(name = "list", description = "List remote destination information")
+@CommandMetaData(name = "list", description = "List remote source information")
 final class ListCommand extends SshCommand {
   @Option(name = "--remote", metaVar = "PATTERN", usage = "pattern to match remote name on")
   private String remote;
@@ -43,7 +42,7 @@ final class ListCommand extends SshCommand {
   @Inject private SourcesCollection sourcesCollection;
 
   @Override
-  protected void run() throws IOException {
+  protected void run() {
     for (Source s : sourcesCollection.getAll()) {
       if (matches(s.getRemoteConfigName())) {
         printRemote(s);

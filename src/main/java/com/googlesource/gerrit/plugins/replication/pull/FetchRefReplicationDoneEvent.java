@@ -14,8 +14,9 @@
 
 package com.googlesource.gerrit.plugins.replication.pull;
 
-import com.google.gerrit.reviewdb.client.Project;
+import com.google.gerrit.entities.Project;
 import com.google.gerrit.server.events.RefEvent;
+import java.util.Objects;
 
 public class FetchRefReplicationDoneEvent extends RefEvent {
   static final String TYPE = "fetch-ref-replication-done";
@@ -32,8 +33,29 @@ public class FetchRefReplicationDoneEvent extends RefEvent {
   }
 
   @Override
+  public int hashCode() {
+    return Objects.hash(TYPE, project, ref, nodesCount);
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    if (!(other instanceof FetchRefReplicationDoneEvent)) {
+      return false;
+    }
+
+    FetchRefReplicationDoneEvent event = (FetchRefReplicationDoneEvent) other;
+    if (!Objects.equals(event.project, this.project)) {
+      return false;
+    }
+    if (!Objects.equals(event.ref, this.ref)) {
+      return false;
+    }
+    return event.nodesCount == this.nodesCount;
+  }
+
+  @Override
   public Project.NameKey getProjectNameKey() {
-    return new Project.NameKey(project);
+    return Project.nameKey(project);
   }
 
   @Override

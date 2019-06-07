@@ -18,8 +18,6 @@ import com.google.common.flogger.FluentLogger;
 import com.google.gerrit.server.events.EventDispatcher;
 import com.google.gerrit.server.events.RefEvent;
 import com.google.gerrit.server.permissions.PermissionBackendException;
-import com.google.gwtorm.server.OrmException;
-
 import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.eclipse.jgit.lib.RefUpdate;
@@ -188,7 +186,7 @@ public abstract class FetchResultProcessing {
     private void postEvent(RefEvent event) {
       try {
         dispatcher.postEvent(event);
-      } catch (OrmException | PermissionBackendException e) {
+      } catch (PermissionBackendException e) {
         logger.atSevere().withCause(e).log("Cannot post event");
       }
     }
