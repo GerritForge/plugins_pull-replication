@@ -13,28 +13,15 @@
 // limitations under the License.
 package com.googlesource.gerrit.plugins.replication.pull;
 
-import com.google.gerrit.server.git.WorkQueue;
+import org.eclipse.jgit.lib.Config;
 
-import java.nio.file.Path;
-import java.util.List;
-
-public interface ReplicationConfig {
-
-  enum FilterType {
-    PROJECT_CREATION,
-    PROJECT_DELETION,
-    ALL
-  }
-
-  List<Source> getSources(FilterType filterType);
+public interface PullReplicationConfig {
 
   boolean isReplicateAllOnPluginStart();
 
-  boolean isEmpty();
+  boolean isDefaultForceUpdate();
 
-  Path getEventsDirectory();
+  boolean reloadIfNeeded();
 
-  int shutdown();
-
-  void startup(WorkQueue workQueue);
+  Config getConfig();
 }

@@ -14,9 +14,7 @@
 
 package com.googlesource.gerrit.plugins.replication.pull;
 
-import static com.googlesource.gerrit.plugins.replication.pull.StartFetchReplicationCapability.START_REPLICATION;
-
-import org.eclipse.jgit.transport.SshSessionFactory;
+import static com.googlesource.gerrit.plugins.replication.StartReplicationCapability.START_REPLICATION;
 
 import com.google.gerrit.extensions.annotations.Exports;
 import com.google.gerrit.extensions.config.CapabilityDefinition;
@@ -26,15 +24,15 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.internal.UniqueAnnotations;
-import com.googlesource.gerrit.plugins.replication.AdminApiFactory;
+import com.googlesource.gerrit.plugins.replication.AutoReloadSecureCredentialsFactoryDecorator;
 import com.googlesource.gerrit.plugins.replication.CredentialsFactory;
-import com.googlesource.gerrit.plugins.replication.RemoteSiteUser;
-import com.googlesource.gerrit.plugins.replication.ReplicationSshSessionFactoryProvider;
+import com.googlesource.gerrit.plugins.replication.StartReplicationCapability;
 
 class PullReplicationModule extends AbstractModule {
   @Override
   protected void configure() {
-    bind(SourceFactory.class).in(Scopes.SINGLETON);
+    bind(SourcesCollection.class).in(Scopes.SINGLETON);
+    install(new FactoryModuleBuilder().build(Source.Factory.class));
     bind(PullReplicationQueue.class).in(Scopes.SINGLETON);
     bind(LifecycleListener.class)
         .annotatedWith(UniqueAnnotations.create())
@@ -45,25 +43,22 @@ class PullReplicationModule extends AbstractModule {
     bind(LifecycleListener.class)
         .annotatedWith(UniqueAnnotations.create())
         .to(PullReplicationLogFile.class);
+
     bind(CredentialsFactory.class)
         .to(AutoReloadSecureCredentialsFactoryDecorator.class)
         .in(Scopes.SINGLETON);
     bind(CapabilityDefinition.class)
         .annotatedWith(Exports.named(START_REPLICATION))
-        .to(StartFetchReplicationCapability.class);
+        .to(StartReplicationCapability.class);
 
     install(new FactoryModuleBuilder().build(FetchAll.Factory.class));
-    install(new FactoryModuleBuilder().build(RemoteSiteUser.Factory.class));
     install(new FactoryModuleBuilder().build(ReplicationState.Factory.class));
 
-    bind(ReplicationConfig.class).to(AutoReloadConfigDecorator.class);
+    bind(PullReplicationConfig.class).to(AutoReloadConfigDecorator.class);
     bind(ReplicationStateListener.class).to(ReplicationStateLogger.class);
 
     EventTypes.register(FetchRefReplicatedEvent.TYPE, FetchRefReplicatedEvent.class);
     EventTypes.register(FetchRefReplicationDoneEvent.TYPE, FetchRefReplicationDoneEvent.class);
     EventTypes.register(FetchReplicationScheduledEvent.TYPE, FetchReplicationScheduledEvent.class);
-    bind(SshSessionFactory.class).toProvider(ReplicationSshSessionFactoryProvider.class);
-
-    bind(AdminApiFactory.class);
   }
 }

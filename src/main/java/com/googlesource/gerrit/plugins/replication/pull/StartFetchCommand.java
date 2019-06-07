@@ -19,7 +19,7 @@ import com.google.gerrit.sshd.CommandMetaData;
 import com.google.gerrit.sshd.SshCommand;
 import com.google.inject.Inject;
 import com.googlesource.gerrit.plugins.replication.ReplicationFilter;
-
+import com.googlesource.gerrit.plugins.replication.StartReplicationCapability;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 
-@RequiresCapability(StartFetchReplicationCapability.START_REPLICATION)
+@RequiresCapability(StartReplicationCapability.START_REPLICATION)
 @CommandMetaData(
     name = "start",
     description = "Start replication for specific project or all projects")

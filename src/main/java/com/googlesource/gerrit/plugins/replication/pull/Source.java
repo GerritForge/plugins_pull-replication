@@ -14,6 +14,8 @@
 
 package com.googlesource.gerrit.plugins.replication.pull;
 
+import static com.googlesource.gerrit.plugins.replication.pull.FetchResultProcessing.resolveNodeName;
+
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -48,15 +50,15 @@ import com.google.gerrit.server.project.NoSuchProjectException;
 import com.google.gerrit.server.project.ProjectCache;
 import com.google.gerrit.server.project.ProjectState;
 import com.google.gerrit.server.util.RequestContext;
+import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
+import com.google.inject.assistedinject.Assisted;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.servlet.RequestScoped;
 import com.googlesource.gerrit.plugins.replication.RemoteSiteUser;
 import com.googlesource.gerrit.plugins.replication.ReplicationFilter;
-import static com.googlesource.gerrit.plugins.replication.pull.FetchResultProcessing.resolveNodeName;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -79,6 +81,11 @@ import org.slf4j.Logger;
 
 public class Source {
   private static final Logger repLog = PullReplicationQueue.repLog;
+
+  public interface Factory {
+    Source create(SourceConfiguration config);
+  }
+
   private final ReplicationStateListener stateLog;
   private final Object stateLock = new Object();
   private final Map<URIish, FetchOne> pending = new HashMap<>();
@@ -109,10 +116,10 @@ public class Source {
     }
   }
 
+  @Inject
   protected Source(
       Injector injector,
-      SourceConfiguration cfg,
-      RemoteSiteUser.Factory replicationUserFactory,
+      @Assisted SourceConfiguration cfg,
       PluginUser pluginUser,
       GitRepositoryManager gitRepositoryManager,
       PermissionBackend permissionBackend,
@@ -142,7 +149,7 @@ public class Source {
           repLog.warn("Group \"{}\" not recognized, removing from authGroup", name);
         }
       }
-      remoteUser = replicationUserFactory.create(new ListGroupMembership(builder.build()));
+      remoteUser = new RemoteSiteUser(new ListGroupMembership(builder.build()));
     } else {
       remoteUser = pluginUser;
     }

@@ -15,54 +15,42 @@ package com.googlesource.gerrit.plugins.replication.pull;
 
 import com.google.common.flogger.FluentLogger;
 import com.google.gerrit.common.FileUtil;
-import com.google.gerrit.extensions.annotations.PluginData;
 import com.google.gerrit.server.config.SitePaths;
-import com.google.gerrit.server.git.WorkQueue;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
-
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
 import org.eclipse.jgit.errors.ConfigInvalidException;
+import org.eclipse.jgit.lib.Config;
 
 @Singleton
-public class AutoReloadConfigDecorator implements ReplicationConfig {
+public class AutoReloadConfigDecorator implements PullReplicationConfig {
   private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
-  private ReplicationFileBasedConfig currentConfig;
+  private PullReplicationFileBasedConfig currentConfig;
   private long currentConfigTs;
   private long lastFailedConfigTs;
 
   private final SitePaths site;
-  private final SourceFactory sourceFactory;
-  private final Path pluginDataDir;
   // Use Provider<> instead of injecting the ReplicationQueue because of circular dependency with
   // ReplicationConfig
   private final Provider<PullReplicationQueue> replicationQueue;
 
   @Inject
-  public AutoReloadConfigDecorator(
-      SitePaths site,
-      SourceFactory sourceFactory,
-      Provider<PullReplicationQueue> replicationQueue,
-      @PluginData Path pluginDataDir)
+  public AutoReloadConfigDecorator(SitePaths site, Provider<PullReplicationQueue> replicationQueue)
       throws ConfigInvalidException, IOException {
     this.site = site;
-    this.sourceFactory = sourceFactory;
-    this.pluginDataDir = pluginDataDir;
     this.currentConfig = loadConfig();
     this.currentConfigTs = getLastModified(currentConfig);
     this.replicationQueue = replicationQueue;
   }
 
-  private static long getLastModified(ReplicationFileBasedConfig cfg) {
+  private static long getLastModified(PullReplicationFileBasedConfig cfg) {
     return FileUtil.lastModified(cfg.getCfgPath());
   }
 
-  private ReplicationFileBasedConfig loadConfig() throws ConfigInvalidException, IOException {
-    return new ReplicationFileBasedConfig(site, sourceFactory, pluginDataDir);
+  private PullReplicationFileBasedConfig loadConfig() throws ConfigInvalidException, IOException {
+    return new PullReplicationFileBasedConfig(site);
   }
 
   private synchronized boolean isAutoReload() {
@@ -70,12 +58,7 @@ public class AutoReloadConfigDecorator implements ReplicationConfig {
   }
 
   @Override
-  public synchronized List<Source> getSources(FilterType filterType) {
-    reloadIfNeeded();
-    return currentConfig.getSources(filterType);
-  }
-
-  private void reloadIfNeeded() {
+  public synchronized boolean reloadIfNeeded() {
     if (isAutoReload()) {
       PullReplicationQueue queue = replicationQueue.get();
       long lastModified = getLastModified(currentConfig);
@@ -85,19 +68,18 @@ public class AutoReloadConfigDecorator implements ReplicationConfig {
           currentConfig = loadConfig();
           currentConfigTs = lastModified;
           lastFailedConfigTs = 0;
-          logger.atInfo().log(
-              "Configuration reloaded: %d sources",
-              currentConfig.getSources(FilterType.ALL).size());
+
+          return true;
         }
       } catch (Exception e) {
         logger.atSevere().withCause(e).log(
             "Cannot reload replication configuration: keeping existing settings");
         lastFailedConfigTs = lastModified;
-        return;
       } finally {
         queue.start();
       }
     }
+    return false;
   }
 
   @Override
@@ -106,22 +88,12 @@ public class AutoReloadConfigDecorator implements ReplicationConfig {
   }
 
   @Override
-  public synchronized boolean isEmpty() {
-    return currentConfig.isEmpty();
+  public synchronized boolean isDefaultForceUpdate() {
+    return currentConfig.isDefaultForceUpdate();
   }
 
   @Override
-  public Path getEventsDirectory() {
-    return currentConfig.getEventsDirectory();
-  }
-
-  @Override
-  public synchronized int shutdown() {
-    return currentConfig.shutdown();
-  }
-
-  @Override
-  public synchronized void startup(WorkQueue workQueue) {
-    currentConfig.startup(workQueue);
+  public Config getConfig() {
+    return currentConfig.getConfig();
   }
 }
